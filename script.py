@@ -1,11 +1,10 @@
 from __future__ import print_function
-from apiclient.discovery import build
 import io
 import csv
 from datetime import datetime
 import pickle
 import os.path
-# from googleapiclient.discovery import build
+from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -108,9 +107,10 @@ def get_time():
         for row in reader:
             cal_date = datetime.strptime(row["# DATE"], "%Y-%m-%d")
             day = {}
-            day["Year"], day["Month"], day["Week"],
-            day["Day"] = cal_date.strftime("%Y"), cal_date.strftime("%m"),
-            cal_date.strftime("%W"), cal_date.strftime("%d")
+            day["Year"] = cal_date.strftime("%Y")
+            day["Month"] = cal_date.strftime("%m")
+            day["Week"] = cal_date.strftime("%W")
+            day["Day"] = cal_date.strftime("%d")
             day["Task"] = row["TASK-ID"]
             day["Duration"] = datetime.strptime(
                               row["CHECKOUT"],
@@ -122,18 +122,18 @@ def get_time():
     return hour_tracking
 
 
-def calculate(tasks, time):
+def calculate(tasks, times):
 
     exclude = ["Year", "Month", "Day"]
     days = set()
     all_days = []
 
-    for line in time:
+    for line in times:
         days.add(line["Year"] + line["Month"] + line["Day"])
 
     for d in sorted(days):
         output = {}
-        for item in time:
+        for item in times:
             if item["Year"] + item["Month"] + item["Day"] == d:
                 if tasks[item["Task"]] in output.keys():
                     output[tasks[item["Task"]]] += item["Duration"]
@@ -151,19 +151,22 @@ def calculate(tasks, time):
     return all_days
 
 
-def update_sheet(sheets, id, range, calc_time):
+def update_sheet(sheets, id, range_n, cal_time):
+
+    test = [1, 2, 3]
 
     result = sheets.spreadsheets().values().get(
-        spreadsheetId=id, range=range).execute()
+        spreadsheetId=id, range=range_n).execute()
 
-    categories = (result["values"][0])
+    categories = result["values"][0]
 
     all_values = []
-    for i in range(len(calc_time)):
+
+    for i in range(len(cal_time)):
         values = []
         for c in categories:
-            if c in calc_time[i].keys():
-                values.append(calc_time[i][c])
+            if c in cal_time[i].keys():
+                values.append(cal_time[i][c])
             else:
                 values.append(0)
         all_values.append(values)
@@ -178,11 +181,10 @@ def update_sheet(sheets, id, range, calc_time):
         value_input_option = "USER_ENTERED"
 
         result = sheets.spreadsheets().values().append(
-            spreadsheetId=id, range=range,
+            spreadsheetId=id, range=range_n,
             valueInputOption=value_input_option, body=body).execute()
-    print('{0} cells appended.'.format(result
-                                       .get('updates')
-                                       .get('updatedCells')))
+
+    print('{0} cells appended.'.format(result.get('updates').get('updatedCells')))
 
 
 def main():
@@ -199,14 +201,14 @@ def main():
     fetch_files(drive, work_id, "work_list.csv")
 
     tasks = refresh_tasks()
-    time = get_time()
-    calc_time = calculate(tasks, time)
+    times = get_time()
+    cal_time = calculate(tasks, times)
 
     # get the categories from the header of the Week Optimizer file
     spreadsheet_id = '1SeCU_7GEZ_1MMh4i5jKXC7i2-RnlUxj-PaZBmsxXKXU'
     range_name = 'Data'
 
-    update_sheet(sheets, spreadsheet_id, range_name, calc_time)
+    update_sheet(sheets, spreadsheet_id, range_name, cal_time)
 
 
 if __name__ == "__main__":
