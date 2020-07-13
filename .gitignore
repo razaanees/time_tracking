@@ -1,0 +1,5 @@
+.ipynb_checkpoints\
+client_secret.json\
+credentials.json\
+google_api.py\
+*.ipynb
